@@ -4,3 +4,4 @@ keras==2.9.0
 numpy==1.23.0
 pandas
 scikit-learn
+Pillow
