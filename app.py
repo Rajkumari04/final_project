@@ -9,16 +9,16 @@ import json
 # Load tokenizer
 # ----------------------------
 with open("tokenizer.json", "r") as f:
-    tokenizer_data = json.load(f)
-tokenizer = tokenizer_from_json(tokenizer_data)
+    tokenizer_json = f.read()  # read as string
+tokenizer = tokenizer_from_json(tokenizer_json)
 
 # ----------------------------
-# Load model
+# Load trained model
 # ----------------------------
 model = load_model("final_model.keras")
 
 # ----------------------------
-# Constants
+# Settings
 # ----------------------------
 MAX_LEN = 50
 
@@ -36,23 +36,28 @@ def predict_pair(source_text, plag_text):
 
     # Predict
     pred = model.predict([src_pad, plg_pad])[0][0]
-    score = np.float32(pred)
-    result = "Likely PLAGIARIZED" if pred > 0.5 else "Likely NOT plagiarized"
-    return score, result
+
+    # Interpret
+    if pred > 0.5:
+        result = "Likely PLAGIARIZED"
+    else:
+        result = "Likely NOT plagiarized"
+
+    return pred, result
 
 # ----------------------------
-# Streamlit interface
+# Streamlit UI
 # ----------------------------
-st.title("Plagiarism Detection")
-st.write("Enter two texts to check if the second text is likely plagiarized from the first.")
+st.title("Plagiarism Detection App")
+st.write("Check if a text is plagiarized against another text.")
 
-source_text = st.text_area("Source Text")
-plag_text = st.text_area("Text to Check")
+source_text = st.text_area("Source Text", height=150)
+plag_text = st.text_area("Text to Check", height=150)
 
 if st.button("Check Plagiarism"):
-    if source_text.strip() == "" or plag_text.strip() == "":
+    if not source_text.strip() or not plag_text.strip():
         st.error("Please enter both texts.")
     else:
         score, result = predict_pair(source_text, plag_text)
-        st.write(f"**Prediction score:** {score:.4f}")
+        st.write(f"**Prediction score:** {score:.6f}")
         st.write(f"**Result:** {result}")
