@@ -1,26 +1,31 @@
 import streamlit as st
 import tensorflow as tf
-import numpy as np
-import json
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+import json
 
 # -----------------------------
-# Load Model
+# Load Model (cached for efficiency)
 # -----------------------------
 @st.cache_resource
-def load_model():
-    model = tf.keras.models.load_model("final_model.h5")
+def load_model(path="final_model.keras"):
+    """
+    Load the Keras model and cache it to avoid reloading on every interaction.
+    """
+    model = tf.keras.models.load_model(path)
     return model
 
 model = load_model()
 
 # -----------------------------
-# Load Tokenizer
+# Load Tokenizer (cached)
 # -----------------------------
 @st.cache_resource
-def load_tokenizer():
-    with open("tokenizer.json", "r") as f:
+def load_tokenizer(path="tokenizer.json"):
+    """
+    Load the tokenizer from JSON and cache it.
+    """
+    with open(path, "r") as f:
         data = f.read()
     tokenizer = tokenizer_from_json(data)
     return tokenizer
@@ -30,19 +35,22 @@ tokenizer = load_tokenizer()
 # -----------------------------
 # Prediction Function
 # -----------------------------
-def predict(text1, text2):
+def predict_plagiarism(text1, text2, max_len=200):
+    """
+    Predict plagiarism between two texts.
+    Returns a label and the plagiarism score.
+    """
     try:
-        combined = text1 + " " + text2
-        seq = tokenizer.texts_to_sequences([combined])
-        seq = pad_sequences(seq, maxlen=200)
+        combined_text = text1 + " " + text2
+        seq = tokenizer.texts_to_sequences([combined_text])
+        seq_padded = pad_sequences(seq, maxlen=max_len)
 
-        pred = model.predict(seq)[0][0]
-        pred = float(pred)
+        score = float(model.predict(seq_padded, verbose=0)[0][0])
 
-        if pred > 0.5:
-            return "⚠️ **Plagiarism Detected**", pred
+        if score > 0.5:
+            return "⚠️ **Plagiarism Detected**", score
         else:
-            return "✅ **No Plagiarism Detected**", pred
+            return "✅ **No Plagiarism Detected**", score
 
     except Exception as e:
         return f"Error: {str(e)}", None
@@ -51,5 +59,21 @@ def predict(text1, text2):
 # Streamlit UI
 # -----------------------------
 st.set_page_config(page_title="Plagiarism Detection", layout="centered")
+st.title("📄 Plagiarism Detection App")
 
-st.ti
+st.markdown(
+    "Enter two texts below to check for plagiarism. "
+    "The model will return a plagiarism score between 0 and 1."
+)
+
+text1 = st.text_area("Enter Text 1")
+text2 = st.text_area("Enter Text 2")
+
+if st.button("Check Plagiarism"):
+    if not text1.strip() or not text2.strip():
+        st.warning("Please enter both texts!")
+    else:
+        label, score = predict_plagiarism(text1, text2)
+        st.write(label)
+        if score is not None:
+            st.info(f"Plagiarism Score: {score:.2f}")
