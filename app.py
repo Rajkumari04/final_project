@@ -1,47 +1,55 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
-import json
-from tensorflow.keras.preprocessing.text import tokenizer_from_json
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+import tensorflow as tf
 from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.text import tokenizer_from_json
+import json
 
-# --- Load Tokenizer ---
-@st.cache_resource
+# Load tokenizer
+@st.cache_data
 def load_tokenizer():
-    with open("tokenizer.json", "r", encoding="utf-8") as f:
+    with open("tokenizer.json", "r") as f:
         data = f.read()
-    tokenizer = tokenizer_from_json(data)
+        tokenizer = tokenizer_from_json(data)
     return tokenizer
 
-# --- Load Model ---
+# Load model
 @st.cache_resource
 def load_siamese_model():
-    model = load_model("final_model.keras")
+    model = load_model("final_model.h5")
     return model
 
 tokenizer = load_tokenizer()
 model = load_siamese_model()
 
-MAX_LEN = 200  # Use the same max length you trained on
+MAX_LEN = 200  # Adjust based on your training
 
-# --- Streamlit UI ---
+def preprocess(text):
+    sequences = tokenizer.texts_to_sequences([text])
+    padded = tf.keras.preprocessing.sequence.pad_sequences(sequences, maxlen=MAX_LEN, padding='post')
+    return padded
+
+def predict_similarity(text1, text2):
+    seq1 = preprocess(text1)
+    seq2 = preprocess(text2)
+    score = model.predict([seq1, seq2])[0][0]
+    return float(score)
+
+# Streamlit UI
+st.set_page_config(page_title="Plagiarism Detection", layout="centered")
 st.title("📄 Plagiarism Detection App")
-st.write("Enter two texts below to check for plagiarism. The model will return a plagiarism score between 0 and 1.")
 
 text1 = st.text_area("Enter Text 1")
 text2 = st.text_area("Enter Text 2")
 
 if st.button("Check Plagiarism"):
-    if text1.strip() == "" or text2.strip() == "":
+    if not text1.strip() or not text2.strip():
         st.warning("Please enter both texts.")
     else:
-        # Tokenize and pad
-        seq1 = tokenizer.texts_to_sequences([text1])
-        seq2 = tokenizer.texts_to_sequences([text2])
-        pad1 = pad_sequences(seq1, maxlen=MAX_LEN, padding='post', truncating='post')
-        pad2 = pad_sequences(seq2, maxlen=MAX_LEN, padding='post', truncating='post')
-
-        # Predict
-        score = model.predict([pad1, pad2])[0][0]
-        st.success(f"Plagiarism Score: {score:.4f}")
+        with st.spinner("Checking..."):
+            score = predict_similarity(text1, text2)
+            st.success(f"Plagiarism Score: {score:.2f}")
+            if score > 0.5:
+                st.info("⚠️ High similarity detected!")
+            else:
+                st.info("✅ Texts are mostly different.")
