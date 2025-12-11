@@ -3,5 +3,5 @@ tensorflow==2.20.0
 keras==2.20.0
 numpy>=1.26.0
 pandas
-scikit-learn
+
 
