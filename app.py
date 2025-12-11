@@ -17,7 +17,7 @@ def load_tokenizer():
 # --- Load Model ---
 @st.cache_resource
 def load_siamese_model():
-    model = load_model("final_model.h5")
+    model = load_model("final_model.keras")  # changed from h5 to keras
     return model
 
 tokenizer = load_tokenizer()
