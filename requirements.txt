@@ -1,6 +1,6 @@
-streamlit==1.26.0
+streamlit
 tensorflow==2.20.0
-numpy>=1.26.0
+numpy>=1.26
 pandas
 scikit-learn
 
