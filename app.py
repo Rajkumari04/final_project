@@ -13,9 +13,9 @@ with open("tokenizer.json", "r") as f:
 tokenizer = tokenizer_from_json(tokenizer_json)
 
 # ----------------------------
-# Load trained model
+# Load trained model for inference
 # ----------------------------
-model = load_model("final_model.keras")
+model = load_model("final_model.keras", compile=False)
 
 # ----------------------------
 # Settings
@@ -35,7 +35,7 @@ def predict_pair(source_text, plag_text):
     plg_pad = pad_sequences(plg_seq, maxlen=MAX_LEN)
 
     # Predict
-    pred = model.predict([src_pad, plg_pad])[0][0]
+    pred = model.predict([src_pad, plg_pad], verbose=0)[0][0]
 
     # Interpret
     if pred > 0.5:
@@ -59,5 +59,4 @@ if st.button("Check Plagiarism"):
         st.error("Please enter both texts.")
     else:
         score, result = predict_pair(source_text, plag_text)
-        st.write(f"**Prediction score:** {score:.6f}")
-        st.write(f"**Result:** {result}")
+        st.success(f"Prediction score: {score:.6f} — {result}")
