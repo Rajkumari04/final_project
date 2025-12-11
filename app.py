@@ -1,59 +1,56 @@
 import streamlit as st
 import numpy as np
 from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 import json
 
-# ---- CONFIG ----
-MODEL_PATH = "final_model.keras"
-TOKENIZER_PATH = "tokenizer.json"
-MAX_LEN = 100  # Adjust based on your model
+# Constants
+MAX_LEN = 50  # Must match your model's training input length
 
-# ---- LOAD TOKENIZER ----
-@st.cache_resource
+# Load tokenizer
+@st.cache_data
 def load_tokenizer():
-    with open(TOKENIZER_PATH, "r") as f:
+    with open("tokenizer.json", "r") as f:
         data = f.read()
         tokenizer = tokenizer_from_json(data)
     return tokenizer
 
-# ---- LOAD MODEL ----
+# Load model
 @st.cache_resource
-def load_siamese_model():
-    model = load_model(MODEL_PATH)
+def load_model_file():
+    model = load_model("final_model.keras")
     return model
 
-# ---- PREDICTION FUNCTION ----
-def preprocess_text(text, tokenizer, max_len=MAX_LEN):
-    seq = tokenizer.texts_to_sequences([text])
-    from tensorflow.keras.preprocessing.sequence import pad_sequences
-    seq = pad_sequences(seq, maxlen=max_len, padding="post")
-    return seq
+tokenizer = load_tokenizer()
+model = load_model_file()
 
-def predict_pair(text1, text2, tokenizer, model, max_len=MAX_LEN):
-    seq1 = preprocess_text(text1, tokenizer, max_len)
-    seq2 = preprocess_text(text2, tokenizer, max_len)
-    score = float(model.predict([seq1, seq2])[0][0])
+# Function to preprocess and predict
+def predict_pair(text1, text2, tokenizer, max_len):
+    seq1 = tokenizer.texts_to_sequences([text1])
+    seq2 = tokenizer.texts_to_sequences([text2])
+    
+    seq1 = pad_sequences(seq1, maxlen=max_len, padding="post")
+    seq2 = pad_sequences(seq2, maxlen=max_len, padding="post")
+    
+    score = model.predict([seq1, seq2])[0][0]
     result = "Likely PLAGIARIZED" if score > 0.5 else "Likely NOT plagiarized"
+    
     return score, result
 
-# ---- STREAMLIT INTERFACE ----
-st.title("Plagiarism Checker")
-st.write("Compare two texts to check if they are likely plagiarized.")
+# Streamlit UI
+st.title("Plagiarism Detection")
 
-text1 = st.text_area("Text A")
-text2 = st.text_area("Text B")
+text1 = st.text_area("Enter Source Text:")
+text2 = st.text_area("Enter Text to Compare:")
 
-if st.button("Check Plagiarism"):
-    if not text1.strip() or not text2.strip():
-        st.warning("Please enter both texts!")
+if st.button("Check"):
+    if text1.strip() == "" or text2.strip() == "":
+        st.warning("Please enter both texts to compare.")
     else:
         try:
-            tokenizer = load_tokenizer()
-            model = load_siamese_model()
-            score, result = predict_pair(text1, text2, tokenizer, model)
-            
-            st.write(f"**Prediction score:** {score:.8f}")
-            st.success(result)
+            score, result = predict_pair(text1, text2, tokenizer, MAX_LEN)
+            st.write(f"Prediction score: {score:.8f}")
+            st.write(result)
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"An error occurred: {str(e)}")
